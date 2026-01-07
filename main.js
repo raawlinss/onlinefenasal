@@ -87,6 +87,8 @@ const bgTracks = [
   new Audio('/Sesler/Ana%20ses1.mp3'),
   new Audio('/Sesler/Ana%20ses2.mp3'),
   new Audio('/Sesler/Ana%20ses3.mp3'),
+  new Audio('/Sesler/Ana%20ses4.mp3'),
+  new Audio('/Sesler/Ana%20ses5.mp3'),
 ];
 let bgTrackIndex = Math.floor(Math.random() * bgTracks.length);
 
@@ -271,6 +273,12 @@ function playRandomSfx() {
 
   sfxPlaying = true;
 
+  if (sasiImages.length > 0) {
+    currentSasiIndex = Math.floor(Math.random() * sasiImages.length);
+  } else {
+    currentSasiIndex = -1;
+  }
+
   // Duck main music to 5% while SFX is playing
   duckBgForSfx();
 
@@ -280,12 +288,14 @@ function playRandomSfx() {
     // Autoplay blocked - restore
     sfxPlaying = false;
     restoreBgToUserVolume();
+    currentSasiIndex = -1;
   });
 
   a.onended = () => {
     a.onended = null;
     sfxPlaying = false;
     restoreBgToUserVolume();
+    currentSasiIndex = -1;
   };
 }
 
@@ -657,6 +667,14 @@ trapImage.src = '/Diger resimler/Tuzak.png';
 const finishImage = new Image();
 finishImage.src = '/Diger resimler/Bitiş_çizgisi.png';
 
+const sasiImages = [];
+['sasihatta1.png', 'sasihatta2.jpg', 'sasihatta3.png', 'sasihatta4.png', 'sasihatta5.png', 'sasihatta6.png'].forEach((file) => {
+  const img = new Image();
+  img.src = `/Diger resimler/${file}`;
+  sasiImages.push(img);
+});
+let currentSasiIndex = -1;
+
 function setupNetwork() {
   socket = io();
 
@@ -720,6 +738,7 @@ function setupNetwork() {
         if (e.key === 'Enter') {
           e.preventDefault();
           if (chatSendBtn) chatSendBtn.click();
+          chatInputEl.blur();
         }
       });
     }
@@ -796,7 +815,7 @@ function setupNetwork() {
         playerX = laneOffsets[lane % 4];
     }
 
-    // Mobil cihazdan girilirsə, serverə "məni mobil kimi işarələ və nick sonuna 📱 əlavə et" de
+    // Mobil cihazdan girilirsə, serverə "məni mobil kimi işarələ və nick sonuna  əlavə et" de
     if (IS_MOBILE && socket && socket.connected) {
       socket.emit('markMobile');
     }
@@ -1292,6 +1311,44 @@ function drawFrame() {
     for (let y = LOGICAL_HEIGHT / 2 - hillHeight; y < LOGICAL_HEIGHT / 2; y++) {
       ctx.fillStyle = '#b8860b';
       ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    }
+  }
+
+  if (currentSasiIndex >= 0 && currentSasiIndex < sasiImages.length) {
+    const img = sasiImages[currentSasiIndex];
+    if (img && img.complete) {
+      const avatarSize = Math.min(w, h) * 0.12;
+      const padding = 12;
+      const centerX = w - padding - avatarSize / 2;
+      const centerY = padding + avatarSize / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, avatarSize / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, centerX - avatarSize / 2, centerY - avatarSize / 2, avatarSize, avatarSize);
+      ctx.restore();
+
+      const text = 'Sasi hatta...';
+      ctx.font = '14px monospace';
+      const textWidth = ctx.measureText(text).width;
+      const boxW = textWidth + 16;
+      const boxH = 22;
+
+      const labelX = centerX - avatarSize / 2 - 10 - boxW;
+      const labelY = centerY;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(labelX, labelY - boxH / 2, boxW, boxH);
+      ctx.strokeStyle = '#ffff00';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(labelX, labelY - boxH / 2, boxW, boxH);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, labelX + 8, labelY);
     }
   }
 

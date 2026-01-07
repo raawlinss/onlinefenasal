@@ -3,7 +3,9 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const { Server } = require('socket.io');
+const bannedWords = require('./bannedWords');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +35,37 @@ let chatSlowModeSeconds = 0;
 const chatMessages = [];
 const lastChatSentAt = {}; // socketId -> ms
 
+function escapeRegex(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const bannedPattern = new RegExp(
+  bannedWords
+    .map((w) => String(w || '').trim())
+    .filter((w, idx, arr) => w && arr.indexOf(w) === idx)
+    .map(escapeRegex)
+    .join('|'),
+  'i'
+);
+
+function containsBannedWord(str) {
+  const text = String(str || '');
+  const hit = bannedPattern.test(text);
+  if (hit) {
+    console.log('Yasaklı kelime tespit edildi, içinde:', text);
+    return true;
+  }
+  return false;
+}
+
+function isNicknameAllowed(name) {
+  return !containsBannedWord(name);
+}
+
+function isChatTextAllowed(text) {
+  return !containsBannedWord(text);
+}
+
 const laneOffsets = [0, 1, 2, 3];
 
 function nextLaneIndex() {
@@ -57,6 +90,11 @@ io.on('connection', (socket) => {
     let name = (payload && typeof payload.name === 'string' ? payload.name.trim() : '') || 'Guest';
     // Nickname limit 12
     if (name.length > 12) name = name.substring(0, 12);
+
+    if (!isNicknameAllowed(name)) {
+      socket.emit('error', { message: 'Bu takma ad kullanılamaz.' });
+      return;
+    }
 
     // Nick tekilliği: aynı anda aynı isim sadece bir kişide olsun
     const nameInUse = Object.values(players).some(
@@ -130,6 +168,11 @@ io.on('connection', (socket) => {
     let text = (payload && typeof payload.text === 'string' ? payload.text : '').trim();
     if (!text) return;
     if (text.length > 140) text = text.substring(0, 140);
+
+    if (!isChatTextAllowed(text)) {
+      socket.emit('chatError', { message: 'Bu mesajda izin verilmeyen ifadeler var.' });
+      return;
+    }
 
     const msg = {
       id: `${now}-${Math.floor(Math.random() * 1e9)}`,
