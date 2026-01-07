@@ -426,4 +426,8 @@ module.exports = [
   'apo',
   'xx',
   'xxx',
+  'ni.ger',
+  'niggggga',
+  'ni.gger',
+  'n.iger',
 ];

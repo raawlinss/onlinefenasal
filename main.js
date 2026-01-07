@@ -141,7 +141,16 @@ function renderChatMessage(msg) {
   } else {
     const nameEl = document.createElement('strong');
     const baseName = msg.name || 'Sistem';
-    const displayName = msg && msg.type === 'user' && msg.isMobile ? `${baseName} 📱` : baseName;
+    nameEl.dataset.realName = baseName;
+    nameEl.dataset.isMobile = msg && msg.type === 'user' && msg.isMobile ? '1' : '0';
+
+    // Chat için de global blur uygula: Raawlinns hariç herkes kendi ekranda nickleri blurred görsün
+    let shownName = baseName;
+    if (globalBlurOthers && myName !== 'Raawlinns') {
+      shownName = '██████';
+    }
+
+    const displayName = msg && msg.type === 'user' && msg.isMobile ? `${shownName} 📱` : shownName;
     nameEl.textContent = displayName;
     meta.appendChild(nameEl);
   }
@@ -165,6 +174,20 @@ function renderChatMessage(msg) {
 
   chatMessagesEl.appendChild(li);
   scrollChatToBottom();
+}
+
+function refreshChatNickBlur() {
+  if (!chatMessagesEl) return;
+  const nameEls = chatMessagesEl.querySelectorAll('li.chat-msg .meta strong');
+  nameEls.forEach((el) => {
+    const realName = el.dataset.realName || '';
+    const isMobile = el.dataset.isMobile === '1';
+    let shownName = realName;
+    if (globalBlurOthers && myName !== 'Raawlinns') {
+      shownName = '██████';
+    }
+    el.textContent = isMobile ? `${shownName} 📱` : shownName;
+  });
 }
 
 function removeChatMessageById(id) {
@@ -225,6 +248,7 @@ let sfxTimer = null;
 let sfxPlaying = false;
 let lastSfxIdx = -1;
 let lastSfxStreak = 0;
+let sfxSafetyTimer = null;
 
 function restoreBgToUserVolume() {
   bgVolume = userBgVolume;
@@ -289,6 +313,10 @@ function playRandomSfx() {
     sfxPlaying = false;
     restoreBgToUserVolume();
     currentSasiIndex = -1;
+    if (sfxSafetyTimer) {
+      clearTimeout(sfxSafetyTimer);
+      sfxSafetyTimer = null;
+    }
   });
 
   a.onended = () => {
@@ -296,7 +324,28 @@ function playRandomSfx() {
     sfxPlaying = false;
     restoreBgToUserVolume();
     currentSasiIndex = -1;
+    if (sfxSafetyTimer) {
+      clearTimeout(sfxSafetyTimer);
+      sfxSafetyTimer = null;
+    }
   };
+
+  // Güvenlik süresi: bazı tarayıcılarda onended çalışmasa bile
+  // en fazla bu süre sonunda efekti ve overlay'i kapat
+  if (sfxSafetyTimer) {
+    clearTimeout(sfxSafetyTimer);
+    sfxSafetyTimer = null;
+  }
+  const fallbackDuration = 8; // saniye
+  const duration = (isFinite(a.duration) && a.duration > 0) ? a.duration + 0.5 : fallbackDuration;
+  sfxSafetyTimer = setTimeout(() => {
+    if (sfxPlaying) {
+      sfxPlaying = false;
+      restoreBgToUserVolume();
+    }
+    currentSasiIndex = -1;
+    sfxSafetyTimer = null;
+  }, duration * 1000);
 }
 
 function startSfxLoop() {
@@ -499,6 +548,7 @@ const lobbyEl = document.getElementById('lobby');
 const lobbyStatusEl = document.getElementById('lobby-status');
 const nicknameInput = document.getElementById('nickname');
 const startBtn = document.getElementById('start-btn');
+const playerListTitleEl = document.querySelector('#sidebar h3');
 const adminPanelEl = document.createElement('div');
 adminPanelEl.id = 'admin-panel';
 adminPanelEl.style.display = 'none';
@@ -524,14 +574,67 @@ adminStartBtn.addEventListener('click', () => {
 
 const playerListEl = document.getElementById('player-list');
 
+// Global blur durumu (server'dan gelir). Açıkken herkes için nickler blur, ama Raawlinns kendi ekranda gerçek nickleri görür.
+let globalBlurOthers = false;
+// Sadece Raawlinns için görünen lokal buton state'i
+let blurOtherPlayers = false;
+let blurButton = null;
+// Raawlinns blur'u açınca kendi ekranında kısa bilgi göster
+let nickBlurNoticeTimer = 0;
+// Tuzaklara basan oyuncu için yerel uyarı süresi
+let trapWarningTimer = 0;
+
+function ensureBlurButton() {
+  if (!adminPanelEl || blurButton || myName !== 'Raawlinns') return;
+  blurButton = document.createElement('button');
+  blurButton.textContent = 'Nickleri blurla';
+  blurButton.style.marginLeft = '8px';
+  blurButton.style.padding = '6px 10px';
+  blurButton.style.backgroundColor = '#333';
+  blurButton.style.color = 'white';
+  blurButton.style.border = '1px solid white';
+  blurButton.style.fontFamily = 'monospace';
+  blurButton.style.cursor = 'pointer';
+  blurButton.onclick = () => {
+    blurOtherPlayers = !blurOtherPlayers;
+    // Server'a global blur durumunu gönder
+    if (socket && socket.connected) {
+      socket.emit('nickBlurUpdate', { enabled: blurOtherPlayers });
+    }
+    // Blur açıldıysa Raawlinns ekranında 5 saniyə mesaj göster
+    if (blurOtherPlayers) {
+      nickBlurNoticeTimer = 5.0;
+    }
+    blurButton.textContent = blurOtherPlayers ? 'Nickleri göster' : 'Nickleri blurla';
+    updatePlayerList();
+  };
+  adminPanelEl.appendChild(blurButton);
+}
+
 function updatePlayerList() {
     playerListEl.innerHTML = ''; // Temizle
-    Object.values(players).forEach(p => {
+    const list = Object.values(players);
+
+    // Başlıkta oyuncu sayısını göster
+    if (playerListTitleEl) {
+      playerListTitleEl.textContent = `Oyuncular (${list.length})`;
+    }
+
+    list.forEach(p => {
         const li = document.createElement('li');
         li.className = 'player-item';
         
         const spanName = document.createElement('span');
-        spanName.textContent = p && typeof p.name === 'string' ? p.name : 'Bilinmeyen';
+        const realName = p && typeof p.name === 'string' ? p.name : 'Bilinmeyen';
+
+        // Global blur modu: herkes için nickler blur, ama Raawlinns kendi ekranda gerçek isimleri görür
+        if (globalBlurOthers && myName !== 'Raawlinns') {
+          // Diğer tüm oyuncular için kendi ekranda blur göster
+          spanName.textContent = '██████';
+        } else {
+          spanName.textContent = realName;
+        }
+
         spanName.style.color = '#fff';
         spanName.style.fontWeight = 'bold';
         li.appendChild(spanName);
@@ -542,7 +645,7 @@ function updatePlayerList() {
             btn.className = 'kick-btn';
             btn.textContent = 'AT';
             btn.onclick = () => {
-                if(confirm(`${p.name} atılsın mı?`)) {
+                if(confirm(`${realName} atılsın mı?`)) {
                     socket.emit('kickPlayer', p.id);
                 }
             };
@@ -554,11 +657,11 @@ function updatePlayerList() {
 }
 
 // Tuzakları yol üzərində aydın, kiçik blok kimi çək (şəkil ölçüsünə uyğun)
-function drawTraps() {
-  if (trackDistance <= 0 || traps.length === 0) return;
+function drawTraps(ctx) {
+  if (!trapImage.complete || trackDistance <= 0) return;
 
-  traps.forEach(trap => {
-    if (trap.hit) return;
+  traps.forEach((trap) => {
+    if (trap.hit) return; // vurulmuş və ya arxada qalmış tuzakları göstərmə
     let relDist = trap.z - distance;
     if (relDist > trackDistance / 2) relDist -= trackDistance;
     if (relDist < -trackDistance / 2) relDist += trackDistance;
@@ -714,6 +817,13 @@ function setupNetwork() {
     updateChatStatus();
   });
 
+  // Nick blur global state (Raawlinns tarafından kontrol edilir)
+  socket.on('nickBlurState', (data) => {
+    globalBlurOthers = !!(data && data.enabled);
+    updatePlayerList();
+    refreshChatNickBlur();
+  });
+
   socket.on('chatError', (data) => {
     const t = data && typeof data.message === 'string' ? data.message : 'Sohbet hatası.';
     renderChatMessage({ id: `${Date.now()}-${Math.floor(Math.random() * 1e9)}`, name: 'Sistem', text: t, ts: Date.now(), type: 'system' });
@@ -796,6 +906,9 @@ function setupNetwork() {
     players = payload.players || {};
     gameState = payload.gameState || 'WAITING';
     countdownVal = payload.countdown || 0;
+    if (typeof payload.nickBlurEnabled === 'boolean') {
+      globalBlurOthers = payload.nickBlurEnabled;
+    }
     
     lobbyEl.classList.add('hidden');
     
@@ -803,6 +916,7 @@ function setupNetwork() {
     if (myName === 'Raawlinns') {
         adminPanelEl.style.display = 'block';
         if (chatAdminControlsEl) chatAdminControlsEl.classList.remove('hidden');
+        ensureBlurButton();
     }
     
     updatePlayerList();
@@ -841,6 +955,7 @@ function setupNetwork() {
       if (typeof sp.name === 'string') players[pid].name = sp.name;
       if (typeof sp.displayName === 'string') players[pid].displayName = sp.displayName;
       if (typeof sp.isMobile === 'boolean') players[pid].isMobile = sp.isMobile;
+      if (typeof sp.lap === 'number') players[pid].lap = sp.lap;
       if (typeof sp.laneIndex === 'number') players[pid].laneIndex = sp.laneIndex;
       if (typeof sp.carSpriteIndex === 'number') players[pid].carSpriteIndex = sp.carSpriteIndex;
     });
@@ -1040,17 +1155,48 @@ function initScenery() {
     }
 }
 
-// Tuzakları yarad (hər 800 metrdə bir, sabit nöqtələrdə)
+// Tuzaklar için random mesafe üret (diğer tuzaklara en az MIN_TRAP_GAP kadar uzak)
+const MIN_TRAP_GAP = 200;
+const TRAP_RESPAWN_DELAY = 5.0; // saniye
+
+function getRandomTrapZ(existingZs) {
+    if (!trackDistance || trackDistance <= 0) return 0;
+
+    const margin = 150; // start ve finish çizgisine çok yakın olmasın
+    const minZ = margin;
+    const maxZ = Math.max(minZ + MIN_TRAP_GAP, trackDistance - margin);
+
+    for (let attempt = 0; attempt < 50; attempt++) {
+        const z = minZ + Math.random() * (maxZ - minZ);
+        let ok = true;
+        for (const ez of existingZs) {
+            if (Math.abs(ez - z) < MIN_TRAP_GAP) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) return z;
+    }
+
+    // Acil durumda: mevcut sayıya göre kabaca yay
+    const fallbackZ = minZ + existingZs.length * (MIN_TRAP_GAP + 50);
+    return fallbackZ % trackDistance;
+}
+
+// Tuzakları yarad (4 adet, random mesafelerde, aralarında min 200 m fark)
 function initTraps() {
     traps.length = 0;
     if (!trackDistance || trackDistance <= 0) return;
 
     const laneOffsets = [-0.35, 0.0, 0.35];
-    let i = 0;
-    for (let z = 80; z < trackDistance; z += 800) {
+    const positions = [];
+    const trapCount = 4;
+
+    for (let i = 0; i < trapCount; i++) {
+        const z = getRandomTrapZ(positions);
+        positions.push(z);
         const offset = laneOffsets[i % laneOffsets.length];
-        traps.push({ z, offset, hit: false });
-        i++;
+        traps.push({ z, offset, hit: false, respawnTimer: 0 });
     }
 }
 
@@ -1182,7 +1328,7 @@ function update(elapsed) {
   // Multiplayer üçün playerX-i carPos ilə sinxron saxla
   playerX = carPos;
 
-  // Tuzaklarla toqquşma: sadə hitbox + yanından keçəndə yox olsun
+  // Tuzaklarla toqquşma: sadə hitbox
   if (trackDistance > 0 && traps.length > 0) {
     traps.forEach(trap => {
       if (trap.hit) return;
@@ -1191,9 +1337,10 @@ function update(elapsed) {
       if (rel > trackDistance / 2) rel -= trackDistance;
       if (rel < -trackDistance / 2) rel += trackDistance;
 
-      // Tələ nöqtəsini keçibsə (dəyilməyibsə də), dərhal yox olsun
+      // Tələnin yanından veya üstündən keçib artıq arxamızda qaldısa, deaktiv et
       if (rel < -5) {
         trap.hit = true;
+        trap.respawnTimer = TRAP_RESPAWN_DELAY;
         return;
       }
 
@@ -1204,10 +1351,28 @@ function update(elapsed) {
           // Tələyə dəyəndə sürəti anlıq 50% azaldırıq
           speed *= 0.5;
           trap.hit = true;
-        } else if (!trap.hit) {
-          // Yanından keçdisə (dəymədisə də), dərhal yox olsun
-          trap.hit = true;
+          trap.respawnTimer = TRAP_RESPAWN_DELAY;
+          // Yerel oyuncu için 3 saniyəlik uyarı göster
+          trapWarningTimer = 3.0;
         }
+      }
+    });
+  }
+
+  // Tuzak respawn zamanlayıcıları
+  if (trackDistance > 0 && traps.length > 0) {
+    traps.forEach(trap => {
+      if (!trap.hit || !trap.respawnTimer || trap.respawnTimer <= 0) return;
+      trap.respawnTimer -= elapsed;
+      if (trap.respawnTimer <= 0) {
+        // Yeni random mesafede respawn et, diğer aktif tuzaklarla arada min 200 m olsun
+        const activeZs = traps
+          .filter(t => t !== trap && !t.hit)
+          .map(t => t.z);
+        const newZ = getRandomTrapZ(activeZs);
+        trap.z = newZ;
+        trap.hit = false;
+        trap.respawnTimer = 0;
       }
     });
   }
@@ -1225,6 +1390,14 @@ function update(elapsed) {
     lapWinnerOverlayTimer -= elapsed;
     if (lapWinnerOverlayTimer < 0) lapWinnerOverlayTimer = 0;
   }
+  if (nickBlurNoticeTimer > 0) {
+    nickBlurNoticeTimer -= elapsed;
+    if (nickBlurNoticeTimer < 0) nickBlurNoticeTimer = 0;
+  }
+  if (trapWarningTimer > 0) {
+    trapWarningTimer -= elapsed;
+    if (trapWarningTimer < 0) trapWarningTimer = 0;
+  }
 
   // Hərəkət məlumatını serverə göndər (tam state)
   // playerX eklendi
@@ -1235,6 +1408,7 @@ function update(elapsed) {
       socket.emit('updateState', {
         direction: carDirection,
         distance: distance,
+        lap: currentLap,
         speed: speed,
         nitroActive: nitroActive,
         playerX: playerX
@@ -1314,12 +1488,13 @@ function drawFrame() {
     }
   }
 
+  // Sasi hatta overlay (rastgele SFX sırasında sağ üstte avatar + yazı)
   if (currentSasiIndex >= 0 && currentSasiIndex < sasiImages.length) {
     const img = sasiImages[currentSasiIndex];
     if (img && img.complete) {
       const avatarSize = Math.min(w, h) * 0.12;
       const padding = 12;
-      const centerX = w - padding - avatarSize / 2;
+      const centerX = w - padding - avatarSize / 2; // sağ üst köşe
       const centerY = padding + avatarSize / 2;
 
       ctx.save();
@@ -1327,7 +1502,13 @@ function drawFrame() {
       ctx.arc(centerX, centerY, avatarSize / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(img, centerX - avatarSize / 2, centerY - avatarSize / 2, avatarSize, avatarSize);
+      ctx.drawImage(
+        img,
+        centerX - avatarSize / 2,
+        centerY - avatarSize / 2,
+        avatarSize,
+        avatarSize
+      );
       ctx.restore();
 
       const text = 'Sasi hatta...';
@@ -1336,7 +1517,7 @@ function drawFrame() {
       const boxW = textWidth + 16;
       const boxH = 22;
 
-      const labelX = centerX - avatarSize / 2 - 10 - boxW;
+      const labelX = centerX - avatarSize / 2 - 10 - boxW; // avatarın solunda kutu
       const labelY = centerY;
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -1350,6 +1531,33 @@ function drawFrame() {
       ctx.textBaseline = 'middle';
       ctx.fillText(text, labelX + 8, labelY);
     }
+  }
+
+  // Raawlinns için: blur açıldığında 5 saniyəlik daha belirgin güvenlik notu
+  if (nickBlurNoticeTimer > 0 && myName === 'Raawlinns' && globalBlurOthers) {
+    const msg = 'Güvenlik nedeniyle nickler gizlendi';
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, nickBlurNoticeTimer / 5.0) * 0.9;
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(msg, w / 2, 16);
+    ctx.restore();
+  }
+
+  // Tuzak uyarısı: yalnız yerel oyuncu tələyə basanda, 3 saniyə orta boy overlay
+  if (trapWarningTimer > 0) {
+    const msg = 'Tuzaklara basma!!!';
+    ctx.save();
+    const alpha = Math.min(1, trapWarningTimer / 3.0);
+    ctx.globalAlpha = 0.9 * alpha;
+    ctx.font = 'bold 24px monospace';
+    ctx.fillStyle = '#ff4444';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(msg, w / 2, h * 0.25);
+    ctx.restore();
   }
 
   // Road + Grass + Kerbs (aşağı yarı)
@@ -1392,7 +1600,7 @@ function drawFrame() {
   }
 
   // Tuzakları və bitiş direklərini yolun üstündə çək
-  drawTraps();
+  drawTraps(ctx);
   drawFinishPosts();
 
   // Drift izləri
@@ -1582,10 +1790,8 @@ function drawFrame() {
       ctx.lineWidth = 3;
       ctx.font = `bold ${Math.max(10, 14 * scale)}px monospace`;
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      const text = p.name;
-      ctx.strokeText(text, otherX + w / 2, otherY - 8 * scale);
-      ctx.fillText(text, otherX + w / 2, otherY - 8 * scale);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.name, otherX + w / 2, otherY - 8 * scale);
     }
   });
 
@@ -1627,9 +1833,14 @@ function drawFrame() {
     ctx.font = '16px monospace';
   }
 
-  // Aşağı sol: Lap HUD (hər oyunçu üçün lokal) – iri fonla
-  const lapBoxW = 200;
-  const lapBoxH = 60;
+  // Aşağı sol: Lap HUD (hər oyunçu üçün lokal) – yazıya göre ayarlı fon
+  ctx.font = '18px monospace';
+  const lapText = `Lap: ${Math.min(currentLap + 1, 5)}/5`;
+  const lapMetrics = ctx.measureText(lapText);
+  const lapPaddingX = 14;
+  const lapPaddingY = 10;
+  const lapBoxW = lapMetrics.width + lapPaddingX * 2;
+  const lapBoxH = 32 + lapPaddingY * 2;
   const lapBoxX = 5;
   const lapBoxY = h - lapBoxH - 10;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1639,11 +1850,57 @@ function drawFrame() {
   ctx.strokeRect(lapBoxX, lapBoxY, lapBoxW, lapBoxH);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '18px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const lapText = `Lap: ${Math.min(currentLap + 1, 5)}/5`;
-  ctx.fillText(lapText, lapBoxX + 10, lapBoxY + lapBoxH / 2);
+  ctx.fillText(lapText, lapBoxX + lapPaddingX, lapBoxY + lapBoxH / 2);
+
+  // Sıralama HUD: 3/10 gibi (tur + mesafe bazlı, server verisine göre)
+  const ids = Object.keys(players || {});
+  const totalPlayers = ids.length;
+  if (totalPlayers > 0 && trackDistance > 0) {
+    const standings = ids.map((pid) => {
+      if (pid === myId) {
+        // Kendi için en doğru değer: lokal lap + lokal distance
+        const myLap = currentLap;
+        const myDist = distance;
+        return { id: pid, progress: (myLap * trackDistance) + myDist };
+      }
+
+      const p = players[pid];
+      const lap = p && typeof p.lap === 'number' ? p.lap : 0;
+      const distVal = p && typeof p.renderDistance === 'number'
+        ? p.renderDistance
+        : (p && typeof p.distance === 'number' ? p.distance : 0);
+      return { id: pid, progress: (lap * trackDistance) + distVal };
+    });
+
+    standings.sort((a, b) => b.progress - a.progress);
+    const myRankIndex = standings.findIndex((s) => s.id === myId);
+    const myRank = myRankIndex >= 0 ? (myRankIndex + 1) : totalPlayers;
+
+    const rankText = `${myRank}/${totalPlayers}`;
+    ctx.font = 'bold 26px monospace';
+    const rankMetrics = ctx.measureText(rankText);
+    const rankPaddingX = 16;
+    const rankPaddingY = 12;
+    const rankBoxW = rankMetrics.width + rankPaddingX * 2;
+    const rankBoxH = 32 + rankPaddingY * 2;
+    const rankBoxX = w - rankBoxW - 10;
+    const rankBoxY = h - rankBoxH - 10;
+
+    // Arka plan kutusu
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(rankBoxX, rankBoxY, rankBoxW, rankBoxH);
+    ctx.strokeStyle = '#00ff99';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rankBoxX, rankBoxY, rankBoxW, rankBoxH);
+
+    // Metin
+    ctx.fillStyle = '#00ff99';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(rankText, rankBoxX + rankBoxW / 2, rankBoxY + rankBoxH / 2);
+  }
 
   // Countdown / Game State Overlay
   if (gameState === 'COUNTDOWN') {

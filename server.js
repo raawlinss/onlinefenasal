@@ -34,6 +34,7 @@ let chatDisabled = false;
 let chatSlowModeSeconds = 0;
 const chatMessages = [];
 const lastChatSentAt = {}; // socketId -> ms
+let nickBlurEnabled = false; // Raawlinns'in açıp kapattığı global nick blur durumu
 
 function escapeRegex(str) {
   return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -130,6 +131,7 @@ io.on('connection', (socket) => {
       displayName,
       isMobile,
       laneIndex,
+      lap: 0,
       direction: 0,
       distance: 0,
       speed: 0,
@@ -144,7 +146,20 @@ io.on('connection', (socket) => {
       history: chatMessages,
     });
 
-    socket.emit('welcome', { id, players, gameState, countdown });
+  // Sadece Raawlinns: oyuncu nick blur durumunu global değiştir
+  socket.on('nickBlurUpdate', (payload) => {
+    const p = players[id];
+    if (!p) return;
+    if (p.name !== 'Raawlinns') return;
+
+    const enabled = !!(payload && payload.enabled);
+    nickBlurEnabled = enabled;
+    io.emit('nickBlurState', { enabled: nickBlurEnabled });
+  });
+
+    socket.emit('welcome', { id, players, gameState, countdown, nickBlurEnabled });
+    // Yeni bağlanan client, mevcut blur durumunu da alsın
+    socket.emit('nickBlurState', { enabled: nickBlurEnabled });
     io.emit('state', players);
   });
 
@@ -241,6 +256,7 @@ io.on('connection', (socket) => {
 
     if (typeof data.direction === 'number') p.direction = data.direction;
     if (typeof data.distance === 'number') p.distance = data.distance;
+    if (typeof data.lap === 'number') p.lap = data.lap;
     if (typeof data.speed === 'number') p.speed = data.speed;
     if (typeof data.nitroActive === 'boolean') p.nitroActive = data.nitroActive;
     if (typeof data.playerX === 'number') p.playerX = data.playerX;
@@ -315,6 +331,7 @@ function startCountdown() {
         p.distance = 0;
         p.speed = 0;
         p.direction = 0;
+        p.lap = 0;
         p.laneIndex = index % 4; // 0, 1, 2, 3 lanes
         // Lane indeksine görə x-pozisyonu (clientdəki kimi) ver ki, hamı start xəttinə toplansın
         const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
