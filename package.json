@@ -4,7 +4,8 @@
   "description": "Sadə online race car oyunu (tək otaqlı server)",
   "main": "server.js",
   "scripts": {
-    "start": "start http://localhost:3000 && node server.js"
+    "start": "node server.js",
+    "dev": "start http://localhost:3000 && node server.js"
   },
   "author": "",
   "license": "MIT",
