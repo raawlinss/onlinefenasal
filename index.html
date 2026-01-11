@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="az">
+
 <head>
   <meta charset="UTF-8" />
   <title>Rawlins Araba Yarışı - (Online)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <div id="game-container">
     <header>
@@ -30,51 +32,54 @@
     </div>
 
     <div id="game-ui">
-        <div id="chat-panel">
-            <div id="chat-header">
-                <h3>Sohbet</h3>
-                <div id="chat-status"></div>
-            </div>
-            <div id="chat-admin-controls" class="hidden">
-                <label for="chat-slowmode">Slow mode</label>
-                <select id="chat-slowmode">
-                    <option value="0">Kapalı</option>
-                    <option value="1">1s</option>
-                    <option value="3">3s</option>
-                    <option value="5">5s</option>
-                    <option value="10">10s</option>
-                </select>
-                <label class="chat-toggle">
-                    <input id="chat-disable" type="checkbox" />
-                    Sohbeti kapat
-                </label>
-            </div>
-            <ul id="chat-messages"></ul>
-            <div id="chat-input-row">
-                <input id="chat-input" type="text" maxlength="140" placeholder="Mesaj yaz..." />
-                <button id="chat-send" type="button">Gönder</button>
-            </div>
+      <div id="chat-panel">
+        <div id="chat-header">
+          <h3>Sohbet</h3>
+          <div id="chat-status"></div>
         </div>
+        <div id="chat-admin-controls" class="hidden">
+          <label for="chat-slowmode">Slow mode</label>
+          <select id="chat-slowmode">
+            <option value="0">Kapalı</option>
+            <option value="1">1s</option>
+            <option value="3">3s</option>
+            <option value="5">5s</option>
+            <option value="10">10s</option>
+          </select>
+          <label class="chat-toggle">
+            <input id="chat-disable" type="checkbox" />
+            Sohbeti kapat
+          </label>
+        </div>
+        <ul id="chat-messages"></ul>
+        <div id="chat-input-row">
+          <input id="chat-input" type="text" maxlength="140" placeholder="Mesaj yaz..." />
+          <button id="chat-send" type="button">Gönder</button>
+        </div>
+      </div>
 
+      <div class="canvas-wrapper">
+        <div class="retro-overlay"></div>
         <canvas id="game" width="960" height="600"></canvas>
+      </div>
 
-        <div id="mobile-controls" class="hidden">
-            <div id="mobile-left">
-                <button id="btn-nitro" type="button">Nitro</button>
-                <div id="mobile-steer">
-                <button id="btn-left" type="button">Sol</button>
-                <button id="btn-right" type="button">Sağ</button>
-                </div>
-            </div>
-            <div id="mobile-right">
-                <button id="btn-up" type="button">İleri</button>
-            </div>
+      <div id="mobile-controls" class="hidden">
+        <div id="mobile-left">
+          <button id="btn-nitro" type="button">Nitro</button>
+          <div id="mobile-steer">
+            <button id="btn-left" type="button">Sol</button>
+            <button id="btn-right" type="button">Sağ</button>
+          </div>
         </div>
+        <div id="mobile-right">
+          <button id="btn-up" type="button">İleri</button>
+        </div>
+      </div>
 
-        <div id="sidebar">
-            <h3>Oyuncular</h3>
-            <ul id="player-list"></ul>
-        </div>
+      <div id="sidebar">
+        <h3>Oyuncular</h3>
+        <ul id="player-list"></ul>
+      </div>
     </div>
     <p id="help">Kontroller: W (Gaz), S (Fren), A (Sol), D (Sağ), BOŞLUK (Nitro). Admin: Raawlinns</p>
   </div>
@@ -82,4 +87,5 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="main.js?v=fixed3"></script>
 </body>
+
 </html>

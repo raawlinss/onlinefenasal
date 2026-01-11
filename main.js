@@ -89,6 +89,7 @@ const bgTracks = [
   new Audio('/Sesler/Ana%20ses3.mp3'),
   new Audio('/Sesler/Ana%20ses4.mp3'),
   new Audio('/Sesler/Ana%20ses5.mp3'),
+  new Audio('/Sesler/Ana%20ses6.mp3'),
 ];
 let bgTrackIndex = Math.floor(Math.random() * bgTracks.length);
 
@@ -569,7 +570,7 @@ adminStartBtn.style.cursor = 'pointer';
 adminPanelEl.appendChild(adminStartBtn);
 
 adminStartBtn.addEventListener('click', () => {
-    if (socket) socket.emit('startGame');
+  if (socket) socket.emit('startGame');
 });
 
 const playerListEl = document.getElementById('player-list');
@@ -612,48 +613,51 @@ function ensureBlurButton() {
 }
 
 function updatePlayerList() {
-    playerListEl.innerHTML = ''; // Temizle
-    const list = Object.values(players);
+  playerListEl.innerHTML = ''; // Temizle
+  const list = Object.values(players);
 
-    // Başlıkta oyuncu sayısını göster
-    if (playerListTitleEl) {
-      playerListTitleEl.textContent = `Oyuncular (${list.length})`;
+  // Başlıkta oyuncu sayısını göster
+  if (playerListTitleEl) {
+    playerListTitleEl.textContent = `Oyuncular (${list.length})`;
+  }
+
+  list.forEach(p => {
+    const li = document.createElement('li');
+    li.className = 'player-item';
+    if (p.id === myId) {
+      li.classList.add('is-me');
     }
 
-    list.forEach(p => {
-        const li = document.createElement('li');
-        li.className = 'player-item';
-        
-        const spanName = document.createElement('span');
-        const realName = p && typeof p.name === 'string' ? p.name : 'Bilinmeyen';
+    const spanName = document.createElement('span');
+    const realName = p && typeof p.name === 'string' ? p.name : 'Bilinmeyen';
 
-        // Global blur modu: herkes için nickler blur, ama Raawlinns kendi ekranda gerçek isimleri görür
-        if (globalBlurOthers && myName !== 'Raawlinns') {
-          // Diğer tüm oyuncular için kendi ekranda blur göster
-          spanName.textContent = '██████';
-        } else {
-          spanName.textContent = realName;
-        }
+    // Global blur modu: herkes için nickler blur, ama Raawlinns kendi ekranda gerçek isimleri görür
+    if (globalBlurOthers && myName !== 'Raawlinns') {
+      // Diğer tüm oyuncular için kendi ekranda blur göster
+      spanName.textContent = '██████';
+    } else {
+      spanName.textContent = realName;
+    }
 
-        spanName.style.color = '#fff';
-        spanName.style.fontWeight = 'bold';
-        li.appendChild(spanName);
-        
-        // Admin KICK Button
-        if (myName === 'Raawlinns' && p.id !== myId) {
-            const btn = document.createElement('button');
-            btn.className = 'kick-btn';
-            btn.textContent = 'AT';
-            btn.onclick = () => {
-                if(confirm(`${realName} atılsın mı?`)) {
-                    socket.emit('kickPlayer', p.id);
-                }
-            };
-            li.appendChild(btn);
+    spanName.style.color = '#fff';
+    spanName.style.fontWeight = 'bold';
+    li.appendChild(spanName);
+
+    // Admin KICK Button
+    if (myName === 'Raawlinns' && p.id !== myId) {
+      const btn = document.createElement('button');
+      btn.className = 'kick-btn';
+      btn.textContent = 'AT';
+      btn.onclick = () => {
+        if (confirm(`${realName} atılsın mı?`)) {
+          socket.emit('kickPlayer', p.id);
         }
-        
-        playerListEl.appendChild(li);
-    });
+      };
+      li.appendChild(btn);
+    }
+
+    playerListEl.appendChild(li);
+  });
 }
 
 // Tuzakları yol üzərində aydın, kiçik blok kimi çək (şəkil ölçüsünə uyğun)
@@ -766,9 +770,13 @@ const trapImage = new Image();
 // Kök qovluqdakı "Diger resimler" altından yüklə
 trapImage.src = '/Diger resimler/Tuzak.png';
 
-// Bitiş çizgisi direkləri
 const finishImage = new Image();
 finishImage.src = '/Diger resimler/Bitiş_çizgisi.png';
+
+const topGearBg = new Image();
+topGearBg.src = '/Diger resimler/top_gear_bg.png';
+
+
 
 const sasiImages = [];
 ['sasihatta1.png', 'sasihatta2.jpg', 'sasihatta3.png', 'sasihatta4.png', 'sasihatta5.png', 'sasihatta6.png'].forEach((file) => {
@@ -779,6 +787,15 @@ const sasiImages = [];
 let currentSasiIndex = -1;
 
 function setupNetwork() {
+  if (typeof io !== 'function') {
+    console.warn('socket.io client not found; running in offline mode');
+    if (typeof lobbyStatusEl !== 'undefined' && lobbyStatusEl) {
+      lobbyStatusEl.textContent = 'Socket.IO yüklenmedi — çevrimdışı mod';
+    }
+    if (typeof startBtn !== 'undefined' && startBtn) startBtn.disabled = true;
+    return;
+  }
+
   socket = io();
 
   socket.on('chatInit', (data) => {
@@ -874,21 +891,21 @@ function setupNetwork() {
 
   startBtn.disabled = true;
   lobbyStatusEl.textContent = 'Serverə qoşulur...';
-  
+
   socket.on('error', (err) => {
-      alert(err.message);
-      location.reload();
+    alert(err.message);
+    location.reload();
   });
 
   socket.on('connect_error', (err) => {
-      console.error('Connection error:', err);
-      lobbyStatusEl.textContent = 'Bağlantı xətası: ' + err.message;
-      startBtn.disabled = true;
+    console.error('Connection error:', err);
+    lobbyStatusEl.textContent = 'Bağlantı xətası: ' + err.message;
+    startBtn.disabled = true;
   });
 
   socket.on('kicked', () => {
-      alert('Admin tarafından atıldınız!');
-      location.reload();
+    alert('Admin tarafından atıldınız!');
+    location.reload();
   });
 
   socket.on('connect', () => {
@@ -909,24 +926,24 @@ function setupNetwork() {
     if (typeof payload.nickBlurEnabled === 'boolean') {
       globalBlurOthers = payload.nickBlurEnabled;
     }
-    
+
     lobbyEl.classList.add('hidden');
-    
+
     // Admin check
     if (myName === 'Raawlinns') {
-        adminPanelEl.style.display = 'block';
-        if (chatAdminControlsEl) chatAdminControlsEl.classList.remove('hidden');
-        ensureBlurButton();
+      adminPanelEl.style.display = 'block';
+      if (chatAdminControlsEl) chatAdminControlsEl.classList.remove('hidden');
+      ensureBlurButton();
     }
-    
+
     updatePlayerList();
-    
+
     // Başlangıç konumu
     const myP = players[myId];
     if (myP) {
-        const lane = myP.laneIndex || 0;
-        const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
-        playerX = laneOffsets[lane % 4];
+      const lane = myP.laneIndex || 0;
+      const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
+      playerX = laneOffsets[lane % 4];
     }
 
     // Mobil cihazdan girilirsə, serverə "məni mobil kimi işarələ və nick sonuna  əlavə et" de
@@ -962,90 +979,90 @@ function setupNetwork() {
 
     updatePlayerList();
   });
-  
+
   socket.on('gameUpdate', (data) => {
-      if (data.type === 'STATE_CHANGE') {
-          gameState = data.state;
-          if (gameState === 'COUNTDOWN') {
-              stopSfxLoop();
-              // Reset local state
-              speed = 0;
-              distance = 0;
-              currentLapTime = 0;
-              currentLap = 0;
-              lap1WinnerName = '';
-              lap1WinnerTimer = 0;
-              raceWinnerName = '';
-              raceWinnerTimer = 0;
-              lapWinners = { 1: '', 2: '', 3: '', 4: '', 5: '' };
-              lapWinnerOverlayText = '';
-              lapWinnerOverlayTimer = 0;
-              // Şeride göre tekrar hizala
-              const myP = players[myId];
-              if (myP) {
-                const lane = myP.laneIndex || 0;
-                const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
-                playerX = laneOffsets[lane % 4];
-              }
-          }
-          if (gameState === 'RACING') {
-              startSfxLoop();
-          } else {
-              stopSfxLoop();
-          }
-      } else if (data.type === 'COUNTDOWN') {
-          countdownVal = data.value;
-      } else if (data.type === 'RESET_POSITIONS') {
-          players = data.players || {};
-          Object.keys(players).forEach((pid) => {
-            const p = players[pid];
-            if (!p) return;
-            if (typeof p.distance === 'number') p.renderDistance = p.distance;
-          });
-
-          // Lokal state-i də sıfırla ki, teleport dərhal görünsün
-          speed = 0;
-          distance = 0;
-          curvature = 0;
-          trackCurvature = 0;
-          playerCurvature = 0;
-          carPos = 0;
-          playerX = 0;
-          nitroActive = false;
-          nitroBoostFactor = 1.0;
-          skidMarks = [];
-
-          const myP = myId ? players[myId] : null;
-          if (myP) {
-            const lane = myP.laneIndex || 0;
-            const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
-            playerX = laneOffsets[lane % 4];
-            carPos = playerX;
-          }
-      } else if (data.type === 'LAP_WINNER') {
-          const lap = data.lap | 0;
-          if (lap >= 1 && lap <= 5 && !lapWinners[lap]) {
-              lapWinners[lap] = data.name || 'Bilınməyən';
-              lapWinnerOverlayText = `${lapWinners[lap]} ${lap}. turu tamamladı!`;
-              lapWinnerOverlayTimer = 4.0;
-              if (lap === 1 && !lap1WinnerName) {
-                lap1WinnerName = lapWinners[lap];
-                lap1WinnerTimer = 4.0;
-              }
-          }
-      } else if (data.type === 'LAP1_WINNER') {
-          // İlk lap qalibi (yalnız bir dəfə gəlir)
-          if (!lap1WinnerName) {
-              lap1WinnerName = data.name || 'Bilınməyən';
-              lap1WinnerTimer = 4.0; // 4 saniyə göstər
-          }
-      } else if (data.type === 'RACE_WINNER') {
-          // 5-ci lap qalibi (yarış qalibi)
-          if (!raceWinnerName) {
-              raceWinnerName = data.name || 'Bilınməyən';
-              raceWinnerTimer = 15.0; // 15 saniyə göstər
-          }
+    if (data.type === 'STATE_CHANGE') {
+      gameState = data.state;
+      if (gameState === 'COUNTDOWN') {
+        stopSfxLoop();
+        // Reset local state
+        speed = 0;
+        distance = 0;
+        currentLapTime = 0;
+        currentLap = 0;
+        lap1WinnerName = '';
+        lap1WinnerTimer = 0;
+        raceWinnerName = '';
+        raceWinnerTimer = 0;
+        lapWinners = { 1: '', 2: '', 3: '', 4: '', 5: '' };
+        lapWinnerOverlayText = '';
+        lapWinnerOverlayTimer = 0;
+        // Şeride göre tekrar hizala
+        const myP = players[myId];
+        if (myP) {
+          const lane = myP.laneIndex || 0;
+          const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
+          playerX = laneOffsets[lane % 4];
+        }
       }
+      if (gameState === 'RACING') {
+        startSfxLoop();
+      } else {
+        stopSfxLoop();
+      }
+    } else if (data.type === 'COUNTDOWN') {
+      countdownVal = data.value;
+    } else if (data.type === 'RESET_POSITIONS') {
+      players = data.players || {};
+      Object.keys(players).forEach((pid) => {
+        const p = players[pid];
+        if (!p) return;
+        if (typeof p.distance === 'number') p.renderDistance = p.distance;
+      });
+
+      // Lokal state-i də sıfırla ki, teleport dərhal görünsün
+      speed = 0;
+      distance = 0;
+      curvature = 0;
+      trackCurvature = 0;
+      playerCurvature = 0;
+      carPos = 0;
+      playerX = 0;
+      nitroActive = false;
+      nitroBoostFactor = 1.0;
+      skidMarks = [];
+
+      const myP = myId ? players[myId] : null;
+      if (myP) {
+        const lane = myP.laneIndex || 0;
+        const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
+        playerX = laneOffsets[lane % 4];
+        carPos = playerX;
+      }
+    } else if (data.type === 'LAP_WINNER') {
+      const lap = data.lap | 0;
+      if (lap >= 1 && lap <= 5 && !lapWinners[lap]) {
+        lapWinners[lap] = data.name || 'Bilınməyən';
+        lapWinnerOverlayText = `${lapWinners[lap]} ${lap}. turu tamamladı!`;
+        lapWinnerOverlayTimer = 4.0;
+        if (lap === 1 && !lap1WinnerName) {
+          lap1WinnerName = lapWinners[lap];
+          lap1WinnerTimer = 4.0;
+        }
+      }
+    } else if (data.type === 'LAP1_WINNER') {
+      // İlk lap qalibi (yalnız bir dəfə gəlir)
+      if (!lap1WinnerName) {
+        lap1WinnerName = data.name || 'Bilınməyən';
+        lap1WinnerTimer = 4.0; // 4 saniyə göstər
+      }
+    } else if (data.type === 'RACE_WINNER') {
+      // 5-ci lap qalibi (yarış qalibi)
+      if (!raceWinnerName) {
+        raceWinnerName = data.name || 'Bilınməyən';
+        raceWinnerTimer = 15.0; // 15 saniyə göstər
+      }
+    }
   });
 
   if (socket) {
@@ -1091,68 +1108,55 @@ function setupNetwork() {
 // Track Definition (Segment based) - C++ m_vecTrack portu
 // { curvature, length }
 const trackSegments = [
-  { curvature: 0.0,  length: 10.0 },
-  { curvature: 0.0,  length: 200.0 },
-  { curvature: 0.0,  length: 400.0 },
+  { curvature: 0.0, length: 10.0 },
+  { curvature: 0.0, length: 200.0 },
+  { curvature: 0.0, length: 400.0 },
   { curvature: -1.0, length: 100.0 },
-  { curvature: 0.0,  length: 200.0 },
+  { curvature: 0.0, length: 200.0 },
   { curvature: -1.0, length: 200.0 },
-  { curvature: 1.0,  length: 200.0 },
-  { curvature: 0.0,  length: 200.0 },
+  { curvature: 1.0, length: 200.0 },
+  { curvature: 0.0, length: 200.0 },
   { curvature: 0.02, length: 500.0 },
-  { curvature: 0.0,  length: 200.0 },
+  { curvature: 0.0, length: 200.0 },
 ];
 
 trackDistance = 0;
 
 function initTrack() {
-    trackDistance = 0;
-    trackSegments.forEach((seg) => {
-        seg.startZ = trackDistance;
-        trackDistance += seg.length;
-        seg.endZ = trackDistance;
-    });
+  trackDistance = 0;
+  trackSegments.forEach((seg) => {
+    seg.startZ = trackDistance;
+    trackDistance += seg.length;
+    seg.endZ = trackDistance;
+  });
 
-    // Reset scenery based on new track
-    initScenery();
+  // Reset scenery based on new track
+  initScenery();
 
-    // Tuzakları yenidən qur
-    initTraps();
+  // Tuzakları yenidən qur
+  initTraps();
 }
 
 function getTrackCurvature(z) {
-    // Wrap z into [0, trackDistance)
-    z = z % trackDistance;
-    if (z < 0) z += trackDistance;
+  // Wrap z into [0, trackDistance)
+  z = z % trackDistance;
+  if (z < 0) z += trackDistance;
 
-    // Find segment (C++ m_vecTrack tarzi)
-    for (const seg of trackSegments) {
-        if (z >= seg.startZ && z < seg.endZ) {
-            return seg.curvature;
-        }
+  // Find segment (C++ m_vecTrack tarzi)
+  for (const seg of trackSegments) {
+    if (z >= seg.startZ && z < seg.endZ) {
+      return seg.curvature;
     }
-    return 0.0;
+  }
+  return 0.0;
 }
 
 function initScenery() {
-    scenery.length = 0; 
-    const density = 0.05; 
-    
-    for (let z = 0; z < trackDistance; z += (10 + Math.random() * 20)) {
-        // Sol taraf
-        scenery.push({
-            type: Math.random() > 0.3 ? 'tree' : 'bush',
-            offset: -1.5 - Math.random() * 5.0, 
-            z: z
-        });
-        
-        // Sağ taraf
-        scenery.push({
-            type: Math.random() > 0.3 ? 'tree' : 'bush',
-            offset: 1.5 + Math.random() * 5.0, 
-            z: z
-        });
-    }
+  scenery.length = 0;
+  const density = 0.05;
+
+  // Scenery (ağaç/çalı) kaldırıldı
+
 }
 
 // Tuzaklar için random mesafe üret (diğer tuzaklara en az MIN_TRAP_GAP kadar uzak)
@@ -1160,44 +1164,44 @@ const MIN_TRAP_GAP = 200;
 const TRAP_RESPAWN_DELAY = 5.0; // saniye
 
 function getRandomTrapZ(existingZs) {
-    if (!trackDistance || trackDistance <= 0) return 0;
+  if (!trackDistance || trackDistance <= 0) return 0;
 
-    const margin = 150; // start ve finish çizgisine çok yakın olmasın
-    const minZ = margin;
-    const maxZ = Math.max(minZ + MIN_TRAP_GAP, trackDistance - margin);
+  const margin = 150; // start ve finish çizgisine çok yakın olmasın
+  const minZ = margin;
+  const maxZ = Math.max(minZ + MIN_TRAP_GAP, trackDistance - margin);
 
-    for (let attempt = 0; attempt < 50; attempt++) {
-        const z = minZ + Math.random() * (maxZ - minZ);
-        let ok = true;
-        for (const ez of existingZs) {
-            if (Math.abs(ez - z) < MIN_TRAP_GAP) {
-                ok = false;
-                break;
-            }
-        }
-        if (ok) return z;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const z = minZ + Math.random() * (maxZ - minZ);
+    let ok = true;
+    for (const ez of existingZs) {
+      if (Math.abs(ez - z) < MIN_TRAP_GAP) {
+        ok = false;
+        break;
+      }
     }
+    if (ok) return z;
+  }
 
-    // Acil durumda: mevcut sayıya göre kabaca yay
-    const fallbackZ = minZ + existingZs.length * (MIN_TRAP_GAP + 50);
-    return fallbackZ % trackDistance;
+  // Acil durumda: mevcut sayıya göre kabaca yay
+  const fallbackZ = minZ + existingZs.length * (MIN_TRAP_GAP + 50);
+  return fallbackZ % trackDistance;
 }
 
 // Tuzakları yarad (4 adet, random mesafelerde, aralarında min 200 m fark)
 function initTraps() {
-    traps.length = 0;
-    if (!trackDistance || trackDistance <= 0) return;
+  traps.length = 0;
+  if (!trackDistance || trackDistance <= 0) return;
 
-    const laneOffsets = [-0.35, 0.0, 0.35];
-    const positions = [];
-    const trapCount = 4;
+  const laneOffsets = [-0.35, 0.0, 0.35];
+  const positions = [];
+  const trapCount = 4;
 
-    for (let i = 0; i < trapCount; i++) {
-        const z = getRandomTrapZ(positions);
-        positions.push(z);
-        const offset = laneOffsets[i % laneOffsets.length];
-        traps.push({ z, offset, hit: false, respawnTimer: 0 });
-    }
+  for (let i = 0; i < trapCount; i++) {
+    const z = getRandomTrapZ(positions);
+    positions.push(z);
+    const offset = laneOffsets[i % laneOffsets.length];
+    traps.push({ z, offset, hit: false, respawnTimer: 0 });
+  }
 }
 
 function handleInput(elapsed) {
@@ -1206,8 +1210,8 @@ function handleInput(elapsed) {
 
   // Sadece yarış başlarsa hareket et
   if (gameState === 'COUNTDOWN') {
-      speed = Math.max(0, speed - 2.0 * elapsed); // Durdur
-      return;
+    speed = Math.max(0, speed - 2.0 * elapsed); // Durdur
+    return;
   }
   // WAITING/RACING: serbest sürüş
 
@@ -1218,41 +1222,42 @@ function handleInput(elapsed) {
 
   // C++: m_speed += 2.0f * elapsed (yuxarı), əks halda -1.0f * elapsed
   if (up) {
-      // 0 -> 100 (speed 0 -> 1) ~5 saniyədə olsun deyə: acc ≈ 0.2
-      let acc = 0.2;
-      // Nitro varsa, charge xərclə və aktiv et (max sürətdə də işləsin)
-      if (nitroKey && nitroCharge > 0) {
-          nitroActive = true;
-          nitroCharge -= (100.0 / NITRO_MAX_DURATION) * elapsed;
-          if (nitroCharge < 0) nitroCharge = 0;
-      } else if (!nitroKey && nitroCharge < 100) {
-          nitroCharge += (100.0 / NITRO_RECHARGE_TIME) * elapsed;
-          if (nitroCharge > 100) nitroCharge = 100;
-      }
-      speed += acc * elapsed;
+    // 0 -> 100 (speed 0 -> 1) ~5 saniyədə olsun deyə: acc ≈ 0.2
+    let acc = 0.2;
+    // Nitro varsa, charge xərclə və aktiv et (max sürətdə də işləsin)
+    if (nitroKey && nitroCharge > 0) {
+      nitroActive = true;
+      nitroCharge -= (100.0 / NITRO_MAX_DURATION) * elapsed;
+      if (nitroCharge < 0) nitroCharge = 0;
+    } else if (!nitroKey && nitroCharge < 100) {
+      nitroCharge += (100.0 / NITRO_RECHARGE_TIME) * elapsed;
+      if (nitroCharge > 100) nitroCharge = 100;
+    }
+    speed += acc * elapsed;
   } else {
-      speed -= 1.0 * elapsed;
-      // Nitro yığılması (pedal buraxılanda da yığılmağa davam etsin)
-      if (!nitroKey && nitroCharge < 100) {
-          nitroCharge += (100.0 / NITRO_RECHARGE_TIME) * elapsed;
-          if (nitroCharge > 100) nitroCharge = 100;
-      }
+    speed -= 1.0 * elapsed;
+    // Nitro yığılması (pedal buraxılanda da yığılmağa davam etsin)
+    if (!nitroKey && nitroCharge < 100) {
+      nitroCharge += (100.0 / NITRO_RECHARGE_TIME) * elapsed;
+      if (nitroCharge > 100) nitroCharge = 100;
+    }
   }
 
   // Car Curvature: sürət artdıqca döndürmək çətinləşir
   if (left) {
-      playerCurvature -= 0.7 * elapsed * (1.0 - speed / 2.0);
-      carDirection = -1;
+    playerCurvature -= 0.7 * elapsed * (1.0 - speed / 2.0);
+    carDirection = -1;
   }
   if (right) {
-      playerCurvature += 0.7 * elapsed * (1.0 - speed / 2.0);
-      carDirection = +1;
+    playerCurvature += 0.7 * elapsed * (1.0 - speed / 2.0);
+    carDirection = +1;
   }
 }
 
 function update(elapsed) {
   handleInput(elapsed);
 
+  // Drift / skid marks (ekranda qısa ömürlü izlər)
   // Drift / skid marks (ekranda qısa ömürlü izlər)
   if (gameState === 'RACING' && speed > 0.55 && Math.abs(carDirection) > 0) {
     const w = canvas.width;
@@ -1283,7 +1288,7 @@ function update(elapsed) {
 
   // C++: off-track cəzası - oyunçu əyriliyi ilə track əyriliyi çox fərqlidirsə, sürəti azaldır
   if (Math.abs(playerCurvature - trackCurvature) >= 0.8) {
-      speed -= 5.0 * elapsed;
+    speed -= 5.0 * elapsed;
   }
 
   // Hız limiti (0..1) - baz sürət
@@ -1313,8 +1318,8 @@ function update(elapsed) {
   let offset = 0;
   let sectionIndex = 0;
   while (sectionIndex < trackSegments.length && offset <= distance) {
-      offset += trackSegments[sectionIndex].length;
-      sectionIndex++;
+    offset += trackSegments[sectionIndex].length;
+    sectionIndex++;
   }
   if (sectionIndex === 0) sectionIndex = 1;
   const targetCurvature = trackSegments[sectionIndex - 1].curvature;
@@ -1417,50 +1422,20 @@ function update(elapsed) {
   }
 }
 
-function drawScenery() {
-    // Objeleri distance'a göre sırala (uzaktan yakına)
-    // Ancak döngü içinde yapmak pahalı olabilir.
-    // Şimdilik sadece görünür olanları bulup çizelim.
-    
-    scenery.forEach(obj => {
-        let relDist = obj.z - distance;
-        if (relDist < -10) relDist += trackDistance;
-        if (relDist > trackDistance - 10) relDist -= trackDistance;
-        
-        if (relDist < 1 || relDist > 150) return; // Görüş mesafesi (LOD)
-
-        const scale = 1.0 / (1.0 + relDist * 0.05);
-        
-        // Perspective calculation (same as cars)
-        const curveOffset = -curvature * Math.pow(1.0 - scale, 2) * 2.0;
-        const screenX = (LOGICAL_WIDTH / 2 + (LOGICAL_WIDTH * (obj.offset + curveOffset) * scale) / 2.0) * CELL_SIZE;
-        
-        const horizonY = 50 * CELL_SIZE;
-        const baseY = 80 * CELL_SIZE;
-        const screenY = horizonY + (baseY - horizonY) * scale;
-        
-        const size = (obj.type === 'tree' ? 40 : 15) * scale * (CELL_SIZE / 4);
-        
-        // Draw Tree/Bush
-        if (obj.type === 'tree') {
-            // Trunk
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(screenX - size/4, screenY - size, size/2, size);
-            // Leaves
-            ctx.fillStyle = '#006400';
-            ctx.beginPath();
-            ctx.moveTo(screenX, screenY - size * 3);
-            ctx.lineTo(screenX - size, screenY - size * 0.5);
-            ctx.lineTo(screenX + size, screenY - size * 0.5);
-            ctx.fill();
-        } else {
-            // Bush
-            ctx.fillStyle = '#228B22';
-            ctx.beginPath();
-            ctx.arc(screenX, screenY - size/2, size, 0, Math.PI * 2);
-            ctx.fill();
-        }
+function drawSkidMarks(ctx) {
+  // Drift izləri
+  if (skidMarks.length > 0) {
+    skidMarks.forEach((m) => {
+      const a = Math.max(0, Math.min(1, m.life / 0.45));
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * a})`;
+      ctx.fillRect(m.x - 6, m.y, 12, 3);
     });
+  }
+}
+
+function drawScenery() {
+  // Scenery (ağaç/çalı) kullanıcı isteği üzerine kaldırıldı.
+  // İleride tekrar istenirse buraya eklenebilir.
 }
 
 function drawFrame() {
@@ -1470,21 +1445,44 @@ function drawFrame() {
   // Ekranı təmizlə
   ctx.clearRect(0, 0, w, h);
 
-  // Sky (üst yarı)
-  for (let y = 0; y < LOGICAL_HEIGHT / 2; y++) {
-    for (let x = 0; x < LOGICAL_WIDTH; x++) {
-      const color = y < LOGICAL_HEIGHT / 4 ? '#0000ff' : '#00008b';
-      ctx.fillStyle = color;
-      ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-    }
-  }
+  // Sky & Parallax Background
+  if (topGearBg.complete && topGearBg.naturalWidth > 0) {
+    // Parallax effect: background shifts based on track curvature
+    // Parallax effect: background shifts based on track curvature
+    // The background image should be wide enough or wrapped.
+    // For simplicity, we center it and shift it.
+    const bgScale = h / (topGearBg.height * 2); // cover half height
+    const bgWidth = topGearBg.width * bgScale;
+    const bgHeight = h / 2;
 
-  // Hills
-  for (let x = 0; x < LOGICAL_WIDTH; x++) {
-    const hillHeight = Math.abs(Math.sin(x * 0.01 + trackCurvature) * 16.0) | 0;
-    for (let y = LOGICAL_HEIGHT / 2 - hillHeight; y < LOGICAL_HEIGHT / 2; y++) {
-      ctx.fillStyle = '#b8860b';
-      ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    // Shift based on curvature to simulate 3D rotation
+    const shiftX = -trackCurvature * 2000;
+
+    // Draw background (simple wrap-around logic)
+    let offsetX = (shiftX % bgWidth);
+    if (offsetX > 0) offsetX -= bgWidth;
+
+    ctx.drawImage(topGearBg, offsetX, 0, bgWidth, bgHeight);
+    ctx.drawImage(topGearBg, offsetX + bgWidth, 0, bgWidth, bgHeight);
+    if (offsetX + bgWidth < w) {
+      ctx.drawImage(topGearBg, offsetX + bgWidth * 2, 0, bgWidth, bgHeight);
+    }
+  } else {
+    // Fallback Sky (üst yarı)
+    for (let y = 0; y < LOGICAL_HEIGHT / 2; y++) {
+      for (let x = 0; x < LOGICAL_WIDTH; x++) {
+        const color = y < LOGICAL_HEIGHT / 4 ? '#0000ff' : '#00008b';
+        ctx.fillStyle = color;
+        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
+    }
+    // Fallback Hills
+    for (let x = 0; x < LOGICAL_WIDTH; x++) {
+      const hillHeight = Math.abs(Math.sin(x * 0.01 + trackCurvature) * 16.0) | 0;
+      for (let y = LOGICAL_HEIGHT / 2 - hillHeight; y < LOGICAL_HEIGHT / 2; y++) {
+        ctx.fillStyle = '#b8860b';
+        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
     }
   }
 
@@ -1563,9 +1561,10 @@ function drawFrame() {
   // Road + Grass + Kerbs (aşağı yarı)
   for (let y = 0; y < LOGICAL_HEIGHT / 2; y++) {
     const perspective = y / (LOGICAL_HEIGHT / 2.0);
-    let roadWidth = 0.1 + perspective * 0.8;
+    // Road width: Top Gear style is slightly wider
+    let roadWidth = 0.12 + perspective * 0.85;
     let clipWidth = roadWidth * 0.15;
-    roadWidth *= 0.62;
+    roadWidth *= 0.7; // Increased from 0.62
     clipWidth *= 0.9;
 
     const middlePoint = 0.5 + curvature * Math.pow(1.0 - perspective, 3);
@@ -1578,19 +1577,30 @@ function drawFrame() {
     const row = LOGICAL_HEIGHT / 2 + y;
 
     const grassColor = Math.sin(20.0 * Math.pow(1.0 - perspective, 3) + distance * 0.1) > 0.0
-      ? '#008000'
+      ? '#109110' // Brighter Green
       : '#006400';
     const clipColor = Math.sin(80.0 * Math.pow(1.0 - perspective, 2) + distance) > 0.0
-      ? '#ff0000'
-      : '#ffffff';
+      ? '#cc0000'
+      : '#eeeeee';
 
-    const roadColor = '#808080'; // Yol rəngi: həmişə boz olsun
+    const roadColor = '#444444'; // Darker road for better contrast
+
+    // Dash lines logic
+    const showDash = Math.sin(80.0 * Math.pow(1.0 - perspective, 2) + distance) > 0.0;
 
     for (let x = 0; x < LOGICAL_WIDTH; x++) {
       let color;
       if (x < leftGrass) color = grassColor;
       else if (x < leftClip) color = clipColor;
-      else if (x < rightClip) color = roadColor;
+      else if (x < rightClip) {
+        color = roadColor;
+        // Dashed center line
+        const dashWidth = 0.02 * LOGICAL_WIDTH; // adaptive width
+        const roadCenterX = middlePoint * LOGICAL_WIDTH;
+        if (showDash && Math.abs(x - roadCenterX) < 1.5) {
+          color = '#ffffff';
+        }
+      }
       else if (x < rightGrass) color = clipColor;
       else color = grassColor;
 
@@ -1599,18 +1609,15 @@ function drawFrame() {
     }
   }
 
+  // Scenery (ağaçlar, çalılar) - yoldan sonra, arabalardan önce çizilsin
+  drawScenery();
+
   // Tuzakları və bitiş direklərini yolun üstündə çək
   drawTraps(ctx);
   drawFinishPosts();
 
-  // Drift izləri
-  if (skidMarks.length > 0) {
-    skidMarks.forEach((m) => {
-      const a = Math.max(0, Math.min(1, m.life / 0.45));
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.55 * a})`;
-      ctx.fillRect(m.x - 6, m.y, 12, 3);
-    });
-  }
+  // 3D Skid Marks çizimi (yolun üzerinde)
+  drawSkidMarks(ctx);
 
   // Car (ekranın aşağısına yaxın, ortada). Lane sistemindən istifadə et.
   const myPlayer = myId && players[myId] ? players[myId] : null;
@@ -1628,30 +1635,46 @@ function drawFrame() {
   const myCarImage = carSpriteImages[mySpriteIndex] || carSpriteImages[0];
 
   if (myCarImage && myCarImage.complete) {
-    let frameIndex = 0;
-    if (carDirection > 0) frameIndex = 1;
-    if (carDirection < 0) frameIndex = 2;
+    // Dönüş animasyonu:
+    let frameIndex = 0; // Straight
+    if (carDirection > 0) frameIndex = 1; // Right
+    if (carDirection < 0) frameIndex = 2; // Left
+
+    // NOT: f1_new.png oluşturulamadı, mevcut sprite logic korunuyor
+    // Ancak nitro efekti geliştirildi
 
     const sx = frameIndex * CAR_SPRITE_SOURCE_WIDTH;
 
-    // Dönüş animasyonu: Canvas rotation
-    const rotationAngle = carDirection * 0.785;
+    // Canvas rotation (daha yumuşak dönüş hissi)
+    const rotationAngle = carDirection * 0.5;
 
-    // Nitro efekti (öz maşın arxasında partiküller)
+    // Gelişmiş Nitro Efekti
     if (nitroActive) {
-        ctx.fillStyle = `rgba(0, 255, 255, ${0.5 + Math.random() * 0.5})`;
+      // Glow arkası kaldırıldı (kullanıcı isteği)
+
+
+      // Parçacıklar (Particles)
+      for (let i = 0; i < 5; i++) {
+        const px = carScreenX + carWidth / 2 + (Math.random() - 0.5) * 20;
+        const py = carScreenY + carHeight - 5 + Math.random() * 10;
+        const size = 2 + Math.random() * 4;
+        const speedY = 2 + Math.random() * 4;
+
+        // Anlık çizim (state tutmuyoruz, basit effekt)
+        ctx.fillStyle = Math.random() > 0.5 ? '#00ffff' : '#ffffff';
+        ctx.globalAlpha = 0.6 + Math.random() * 0.4;
         ctx.beginPath();
-        ctx.arc(carScreenX + carWidth/2, carScreenY + carHeight, 10 + Math.random() * 5, 0, Math.PI * 2);
+        // Arkaya doğru uzayan çizgi
+        ctx.rect(px, py, size, size * 2);
         ctx.fill();
-        
-        ctx.fillStyle = '#ffaa00';
-        for(let i=0; i<3; i++) {
-            ctx.fillRect(
-                carScreenX + carWidth/2 - 5 + Math.random()*10,
-                carScreenY + carHeight - 5 + Math.random()*10,
-                4, 4
-            );
-        }
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Büyük alev merkezi
+      ctx.fillStyle = `rgba(0, 200, 255, ${0.8 + Math.random() * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(carScreenX + carWidth / 2, carScreenY + carHeight, 6 + Math.random() * 3, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.save();
@@ -1684,7 +1707,7 @@ function drawFrame() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     const text = myPlayer.name;
-    
+
     // Stroke first for outline
     ctx.strokeText(text, carScreenX + carWidth / 2, carScreenY - 10);
     // Then fill
@@ -1712,7 +1735,7 @@ function drawFrame() {
 
     // Relative distance calculation
     let relDist = (p.renderDistance || 0) - distance;
-    
+
     // Wrap around fix (basic)
     if (relDist > trackDistance / 2) relDist -= trackDistance;
     if (relDist < -trackDistance / 2) relDist += trackDistance;
@@ -1722,14 +1745,14 @@ function drawFrame() {
 
     // Scale factor
     const scale = 1.0 / (1.0 + Math.max(0, relDist) * 0.05);
-    
+
     // Diğer oyuncuların pozisyonu (PlayerX support)
     const otherP_X = p.playerX !== undefined ? p.playerX : [-0.6, -0.2, 0.2, 0.6][(p.laneIndex || 0) % 4];
-    
+
     // Perspective fix
-    const curveOffset = -curvature * Math.pow(1.0 - scale, 2) * 2.0; 
+    const curveOffset = -curvature * Math.pow(1.0 - scale, 2) * 2.0;
     const otherX_Center = (LOGICAL_WIDTH / 2 + (LOGICAL_WIDTH * (otherP_X + curveOffset) * scale) / 2.0) * CELL_SIZE;
-    
+
     const horizonY = 50 * CELL_SIZE;
     const baseY = 80 * CELL_SIZE;
     const otherY = horizonY + (baseY - horizonY) * scale;
@@ -1743,15 +1766,15 @@ function drawFrame() {
     if (p.direction < 0) frameIndex = 2;
 
     const sx = frameIndex * CAR_SPRITE_SOURCE_WIDTH;
-    
+
     // Rakip Nitro
     if (p.nitroActive) {
-        ctx.fillStyle = `rgba(0, 255, 255, ${0.5 * scale})`;
-        ctx.beginPath();
-        ctx.arc(otherX + w/2, otherY + h, 10 * scale, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.fillStyle = `rgba(0, 255, 255, ${0.5 * scale})`;
+      ctx.beginPath();
+      ctx.arc(otherX + w / 2, otherY + h, 10 * scale, 0, Math.PI * 2);
+      ctx.fill();
     }
-    
+
     // Hər rəqib üçün sprite seç (carSpriteIndex)
     const spriteIndex = typeof p.carSpriteIndex === 'number'
       ? Math.max(0, Math.min(carSpriteImages.length - 1, p.carSpriteIndex | 0))
@@ -1761,24 +1784,24 @@ function drawFrame() {
     if (!otherCarImage || !otherCarImage.complete) {
       // Sprite yüklənməsə də rəqib maşın itmesin
       ctx.fillStyle = '#00ff00';
-      ctx.fillRect(otherX + w/2 - w/2, otherY, w, h);
+      ctx.fillRect(otherX + w / 2 - w / 2, otherY, w, h);
       return;
     }
 
     ctx.save();
     ctx.globalAlpha = Math.min(1.0, scale + 0.2); // Uzaqdakılar biraz solğun
-    ctx.translate(otherX + w/2, otherY + h/2);
+    ctx.translate(otherX + w / 2, otherY + h / 2);
     // Onların da dönüşünü göstər
     ctx.rotate((p.direction || 0) * 0.1);
-    
+
     ctx.drawImage(
       otherCarImage,
       sx,
       0,
       CAR_SPRITE_SOURCE_WIDTH,
       CAR_SPRITE_SOURCE_HEIGHT,
-      -w/2,
-      -h/2,
+      -w / 2,
+      -h / 2,
       w,
       h
     );
@@ -1804,7 +1827,7 @@ function drawFrame() {
   const effectiveSpeed = speed * nitroBoostFactor;
   ctx.fillText(`Mesafe: ${distance.toFixed(2)} m`, 10, 10);
   ctx.fillText(`Hız: ${(effectiveSpeed * 100).toFixed(0)} km/s`, 10, 30);
-  
+
   // Nitro Bar
   ctx.fillStyle = '#333';
   ctx.fillRect(10, 60, 100, 10);
@@ -1904,63 +1927,60 @@ function drawFrame() {
 
   // Countdown / Game State Overlay
   if (gameState === 'COUNTDOWN') {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, w, h);
-      
-      ctx.fillStyle = '#ffff00';
-      ctx.font = '80px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(countdownVal > 0 ? countdownVal : 'GO!', w/2, h/2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = '#ffff00';
+    ctx.font = '80px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(countdownVal > 0 ? countdownVal : 'GO!', w / 2, h / 2);
   } else if (gameState === 'WAITING') {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText('Oyuncular bekleniyor...', w/2, 50);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Oyuncular bekleniyor...', w / 2, 50);
   }
 
-  // Lap winner overlay (lap 1..5) - small overlay disabled (use big overlay only)
-
-  // Lap qalibləri üçün ortada overlay-lər
   // Lap winner overlay (big, for every lap 1..5)
   if (lapWinnerOverlayTimer > 0 && lapWinnerOverlayText) {
-      const alpha = Math.min(1, lapWinnerOverlayTimer / 4.0 + 0.2);
-      ctx.save();
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.6 * alpha})`;
-      ctx.fillRect(0, h * 0.3, w, h * 0.4);
+    const alpha = Math.min(1, lapWinnerOverlayTimer / 4.0 + 0.2);
+    ctx.save();
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.6 * alpha})`;
+    ctx.fillRect(0, h * 0.3, w, h * 0.4);
 
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-      ctx.font = '48px monospace';
-      ctx.fillText(lapWinnerOverlayText, w / 2, h / 2);
-      ctx.restore();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+    ctx.font = '48px monospace';
+    ctx.fillText(lapWinnerOverlayText, w / 2, h / 2);
+    ctx.restore();
   }
 
   // 5-ci lap / yarış qalibi (15 saniyə, daha böyük effekt)
   if (raceWinnerTimer > 0 && raceWinnerName) {
-      const alpha = Math.min(1, raceWinnerTimer / 15.0 + 0.3);
-      ctx.save();
-      // Arxa planı bir az daha güclü qaranlıq
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.75 * alpha})`;
-      ctx.fillRect(0, 0, w, h);
+    const alpha = Math.min(1, raceWinnerTimer / 15.0 + 0.3);
+    ctx.save();
+    // Arxa planı bir az daha güclü qaranlıq
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.75 * alpha})`;
+    ctx.fillRect(0, 0, w, h);
 
-      // Parlayan çərçivə
-      const pad = 40;
-      ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
-      ctx.lineWidth = 6;
-      ctx.strokeRect(pad, pad, w - pad * 2, h - pad * 2);
+    // Parlayan çərçivə
+    const pad = 40;
+    ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
+    ctx.lineWidth = 6;
+    ctx.strokeRect(pad, pad, w - pad * 2, h - pad * 2);
 
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-      ctx.font = '54px monospace';
-      ctx.fillText(`${raceWinnerName} YARIŞI KAZANDI!`, w / 2, h / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.font = '54px monospace';
+    ctx.fillText(`${raceWinnerName} YARIŞI KAZANDI!`, w / 2, h / 2);
 
-      ctx.font = '24px monospace';
-      ctx.fillText('Yeni yarış başlayana kadar bekleniyor...', w / 2, h / 2 + 60);
-      ctx.restore();
+    ctx.font = '24px monospace';
+    ctx.fillText('Yeni yarış başlayana kadar bekleniyor...', w / 2, h / 2 + 60);
+    ctx.restore();
   }
 }
 
@@ -1981,60 +2001,83 @@ function loop(now) {
   // Çox böyük sıçrayışlar olmasın deyə limitləyək (tab dəyişəndə və s.)
   const elapsed = Math.min(deltaSec, 0.05); // maksimum ~50 ms
 
-  update(elapsed);
-  drawFrame();
-
-  requestAnimationFrame(loop);
+  try {
+    update(elapsed);
+    drawFrame();
+  } catch (err) {
+    console.error('Runtime error in game loop:', err);
+    // Try to show an on-canvas error so it's obvious
+    try {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'red';
+      ctx.font = '18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ERROR: see console for details', canvas.width / 2, canvas.height / 2);
+    } catch (e) {
+      // ignore
+    }
+  } finally {
+    requestAnimationFrame(loop);
+  }
 }
 
 initTrack();
+try {
   setupNetwork();
-  requestAnimationFrame(loop);
-  
-  // Audio Context (Tarayıcı etkileşimi gerektirir)
-  let audioCtx = null;
-  
-  function initAudio() {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
+} catch (e) {
+  console.error('Network init failed:', e);
+  if (typeof lobbyStatusEl !== 'undefined' && lobbyStatusEl) {
+    lobbyStatusEl.textContent = 'Ağ başlatılamadı — çevrimdışı modda çalıştırılıyor.';
   }
-  
-  // Basit osilatör tabanlı ses yöneticisi
-  function playSound(type, val) {
-    if (!audioCtx) initAudio();
-    if (!audioCtx) return;
-  
-    if (type === 'start') {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-  
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
-      
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-      
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.5);
-    } else if (type === 'engine') {
-      // Motor sesi sürekli çalınabilir ama basitlik için anlık "bip"ler yerine
-      // hız arttıkça pitch değişimi simülasyonu yapılabilir.
-      // Burada sadece çok basit bir noise/hum efekti simüle edeceğiz.
-      // (Performans için her frame çağrılmamalı, ama bu demo için idare eder)
-      
-      // Not: Her frame oscillator yaratmak kötüdür. 
-      // Ancak basit tutmak için şimdilik boş bırakıyorum veya çok nadir sesler ekliyorum.
-      // Engine sesi sürekli loop olmalı, buraya sığdırmak zor.
-    }
+}
+requestAnimationFrame(loop);
+
+// Audio Context (Tarayıcı etkileşimi gerektirir)
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  
-  // Kullanıcı etkileşimi ile sesi başlat
-  document.addEventListener('click', initAudio, { once: true });
-  document.addEventListener('keydown', initAudio, { once: true });
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+// Basit osilatör tabanlı ses yöneticisi
+function playSound(type, val) {
+  if (!audioCtx) initAudio();
+  if (!audioCtx) return;
+
+  if (type === 'start') {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+  } else if (type === 'engine') {
+    // Motor sesi sürekli çalınabilir ama basitlik için anlık "bip"ler yerine
+    // hız arttıkça pitch değişimi simülasyonu yapılabilir.
+    // Burada sadece çok basit bir noise/hum efekti simüle edeceğiz.
+    // (Performans için her frame çağrılmamalı, ama bu demo için idare eder)
+
+    // Not: Her frame oscillator yaratmak kötüdür. 
+    // Ancak basit tutmak için şimdilik boş bırakıyorum veya çok nadir sesler ekliyorum.
+    // Engine sesi sürekli loop olmalı, buraya sığdırmak zor.
+  }
+}
+
+// Kullanıcı etkileşimi ile sesi başlat
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('keydown', initAudio, { once: true });

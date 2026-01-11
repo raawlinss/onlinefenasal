@@ -84,8 +84,8 @@ io.on('connection', (socket) => {
 
   socket.on('join', (payload) => {
     if (Object.keys(players).length >= MAX_PLAYERS) {
-        socket.emit('error', { message: 'Sunucu dolu (Maks 60 kişi)!' });
-        return;
+      socket.emit('error', { message: 'Sunucu dolu (Maks 60 kişi)!' });
+      return;
     }
 
     let name = (payload && typeof payload.name === 'string' ? payload.name.trim() : '') || 'Guest';
@@ -146,16 +146,16 @@ io.on('connection', (socket) => {
       history: chatMessages,
     });
 
-  // Sadece Raawlinns: oyuncu nick blur durumunu global değiştir
-  socket.on('nickBlurUpdate', (payload) => {
-    const p = players[id];
-    if (!p) return;
-    if (p.name !== 'Raawlinns') return;
+    // Sadece Raawlinns: oyuncu nick blur durumunu global değiştir
+    socket.on('nickBlurUpdate', (payload) => {
+      const p = players[id];
+      if (!p) return;
+      if (p.name !== 'Raawlinns') return;
 
-    const enabled = !!(payload && payload.enabled);
-    nickBlurEnabled = enabled;
-    io.emit('nickBlurState', { enabled: nickBlurEnabled });
-  });
+      const enabled = !!(payload && payload.enabled);
+      nickBlurEnabled = enabled;
+      io.emit('nickBlurState', { enabled: nickBlurEnabled });
+    });
 
     socket.emit('welcome', { id, players, gameState, countdown, nickBlurEnabled });
     // Yeni bağlanan client, mevcut blur durumunu da alsın
@@ -236,18 +236,18 @@ io.on('connection', (socket) => {
     const disabledText = chatDisabled ? 'Açık' : 'Kapalı';
     io.emit('chatSystem', { text: `Admin ayarları güncelledi. Slow mode: ${slowText}. Sohbeti kapat: ${disabledText}.`, ts: Date.now() });
   });
-  
+
   // Admin Kick Event
   socket.on('kickPlayer', (targetId) => {
-      const admin = players[id];
-      if (admin && admin.name === 'Raawlinns') {
-          if (players[targetId]) {
-              io.to(targetId).emit('kicked'); // Tell client they are kicked
-              io.sockets.sockets.get(targetId)?.disconnect(true); // Force disconnect
-              delete players[targetId];
-              io.emit('state', players);
-          }
+    const admin = players[id];
+    if (admin && admin.name === 'Raawlinns') {
+      if (players[targetId]) {
+        io.to(targetId).emit('kicked'); // Tell client they are kicked
+        io.sockets.sockets.get(targetId)?.disconnect(true); // Force disconnect
+        delete players[targetId];
+        io.emit('state', players);
       }
+    }
   });
 
   socket.on('updateState', (data) => {
@@ -260,7 +260,7 @@ io.on('connection', (socket) => {
     if (typeof data.speed === 'number') p.speed = data.speed;
     if (typeof data.nitroActive === 'boolean') p.nitroActive = data.nitroActive;
     if (typeof data.playerX === 'number') p.playerX = data.playerX;
-    
+
     socket.broadcast.emit('playerUpdated', p);
   });
 
@@ -274,7 +274,7 @@ io.on('connection', (socket) => {
     }
     io.emit('state', players);
   });
-  
+
   // Client notifies when it completes a lap
   socket.on('lapCompleted', (payload) => {
     const p = players[id];
@@ -305,7 +305,7 @@ io.on('connection', (socket) => {
     // Only allow if specific nickname (though basic check here, better security needed in prod)
     const p = players[id];
     if (p && p.name === 'Raawlinns' && gameState !== 'COUNTDOWN') {
-        startCountdown();
+      startCountdown();
     }
   });
 
@@ -317,43 +317,43 @@ io.on('connection', (socket) => {
 });
 
 function startCountdown() {
-    gameState = 'COUNTDOWN';
-    countdown = 10;
-    // Reset lap winners for new race
-    firstLap1Winner = null;
-    raceWinner = null;
-    firstLapWinners = { 1: null, 2: null, 3: null, 4: null, 5: null };
-    
-    // Reset players and assign lanes (spawn pozisyonuna teleport)
-    const playerIds = Object.keys(players);
-    playerIds.forEach((pid, index) => {
-        const p = players[pid];
-        p.distance = 0;
-        p.speed = 0;
-        p.direction = 0;
-        p.lap = 0;
-        p.laneIndex = index % 4; // 0, 1, 2, 3 lanes
-        // Lane indeksine görə x-pozisyonu (clientdəki kimi) ver ki, hamı start xəttinə toplansın
-        const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
-        p.playerX = laneOffsets[p.laneIndex];
-        // Reset local physics state if needed (client handles this based on reset)
-    });
-    
-    io.emit('gameUpdate', { type: 'RESET_POSITIONS', players });
-    io.emit('gameUpdate', { type: 'STATE_CHANGE', state: gameState });
-    
-    if (countdownTimer) clearInterval(countdownTimer);
-    
-    countdownTimer = setInterval(() => {
-        countdown--;
-        io.emit('gameUpdate', { type: 'COUNTDOWN', value: countdown });
-        
-        if (countdown <= 0) {
-            clearInterval(countdownTimer);
-            gameState = 'RACING';
-            io.emit('gameUpdate', { type: 'STATE_CHANGE', state: gameState });
-        }
-    }, 1000);
+  gameState = 'COUNTDOWN';
+  countdown = 10;
+  // Reset lap winners for new race
+  firstLap1Winner = null;
+  raceWinner = null;
+  firstLapWinners = { 1: null, 2: null, 3: null, 4: null, 5: null };
+
+  // Reset players and assign lanes (spawn pozisyonuna teleport)
+  const playerIds = Object.keys(players);
+  playerIds.forEach((pid, index) => {
+    const p = players[pid];
+    p.distance = 0;
+    p.speed = 0;
+    p.direction = 0;
+    p.lap = 0;
+    p.laneIndex = index % 4; // 0, 1, 2, 3 lanes
+    // Lane indeksine görə x-pozisyonu (clientdəki kimi) ver ki, hamı start xəttinə toplansın
+    const laneOffsets = [-0.6, -0.2, 0.2, 0.6];
+    p.playerX = laneOffsets[p.laneIndex];
+    // Reset local physics state if needed (client handles this based on reset)
+  });
+
+  io.emit('gameUpdate', { type: 'RESET_POSITIONS', players });
+  io.emit('gameUpdate', { type: 'STATE_CHANGE', state: gameState });
+
+  if (countdownTimer) clearInterval(countdownTimer);
+
+  countdownTimer = setInterval(() => {
+    countdown--;
+    io.emit('gameUpdate', { type: 'COUNTDOWN', value: countdown });
+
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+      gameState = 'RACING';
+      io.emit('gameUpdate', { type: 'STATE_CHANGE', state: gameState });
+    }
+  }, 1000);
 }
 
 server.listen(PORT, HOST, () => {
